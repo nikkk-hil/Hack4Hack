@@ -6,7 +6,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -73,6 +76,30 @@ public class GlobalExceptionHandler {
                 "Provided method for this endpoint is not supported.",
                 UUID.randomUUID().toString());
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(body);
+    }
+    
+    private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message) {
+        ErrorResponse body = new ErrorResponse(
+                status.value(), code, message, UUID.randomUUID().toString());
+        return ResponseEntity.status(status).body(body);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED",
+                "The request body contains invalid values.");
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        return error(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST_BODY",
+                "The request body is missing or is not valid JSON.");
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorResponse> handleMissingHeader(MissingRequestHeaderException ex) {
+        return error(HttpStatus.BAD_REQUEST, "MISSING_HEADER",
+                "The required header '" + ex.getHeaderName() + "' is missing.");
     }
 
 
